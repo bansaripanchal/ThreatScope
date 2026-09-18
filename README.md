@@ -1,4 +1,4 @@
-# ThreatScope V2
+# ThreatScope
 ### Ethical Hacking &bull; Reconnaissance &bull; VAPT &bull; Attack-Surface Intelligence
 
 ThreatScope V2 is a completely new, professional, full-stack cybersecurity web application built from zero for authorized security testers, penetration testers, and security researchers. It provides comprehensive automated reconnaissance, enumeration, attack surface mapping, evidence-backed findings, timeline auditing, scan-to-scan comparison, and professional 23-section reporting.
