@@ -1,0 +1,397 @@
+/* ==========================================================================
+   ThreatScope V2 - Professional Report CSS
+   Styles the 23-section ethical hacking & VAPT reconnaissance report.
+   Includes full print and PDF rendering optimization.
+   ========================================================================== */
+
+.report-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.report-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Section 1: Cover Page */
+.report-cover {
+  padding: 3.5rem 2rem 4rem 2rem;
+  border-bottom: 2px solid var(--accent-primary);
+  margin-bottom: 3rem;
+  background: linear-gradient(to bottom, var(--bg-surface-secondary), var(--bg-surface));
+  border-radius: var(--radius-lg);
+}
+
+.report-cover-badge {
+  display: inline-block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-primary);
+  background-color: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  margin-bottom: 1.5rem;
+}
+
+.report-cover-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+
+.report-cover-subtitle {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+}
+
+.report-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  padding: 1.25rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+}
+
+.report-meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.report-meta-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.report-meta-val {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.report-confidentiality {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-left: 3px solid var(--color-danger);
+  padding-left: 0.75rem;
+}
+
+/* Sections Structure */
+.report-section {
+  margin-bottom: 3rem;
+}
+
+.report-section-num {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.report-section-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.report-text {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+/* Finding Cards in Report */
+.report-finding-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 1.25rem;
+  background-color: var(--bg-surface);
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+
+.report-finding-header {
+  padding: 0.85rem 1.25rem;
+  background-color: var(--bg-surface-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.report-finding-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.report-finding-body {
+  padding: 1.25rem;
+}
+
+.evidence-box {
+  background-color: var(--bg-surface-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  margin-top: 0.75rem;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.recommendation-box {
+  background-color: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  margin-top: 0.75rem;
+}
+
+/* ==========================================================================
+   Print & PDF Styling
+   Ensures sharp contrast, preserved colors, readable badges, and clean layout
+   when printed or saved as PDF from any browser or theme.
+   ========================================================================== */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  :root, html, body {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    --bg-surface: #ffffff !important;
+    --bg-surface-secondary: #f8fafc !important;
+    --text-primary: #0f172a !important;
+    --text-secondary: #334155 !important;
+    --text-muted: #64748b !important;
+    --border-color: #cbd5e1 !important;
+  }
+
+  .navbar, .footer, .report-toolbar, .no-print {
+    display: none !important;
+  }
+
+  .app-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .report-container {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .report-cover {
+    background: #f8fafc !important;
+    page-break-after: always;
+    padding: 3rem 2rem !important;
+    border: 1px solid #cbd5e1 !important;
+    border-top: 4px solid #0284c7 !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .report-cover-title {
+    color: #0f172a !important;
+  }
+
+  .report-cover-subtitle {
+    color: #334155 !important;
+  }
+
+  .report-meta-grid {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .report-meta-label {
+    color: #475569 !important;
+    font-weight: 700 !important;
+  }
+
+  .report-meta-val {
+    color: #0f172a !important;
+    font-weight: 600 !important;
+  }
+
+  .report-section {
+    page-break-inside: avoid;
+    margin-bottom: 2.5rem !important;
+  }
+
+  .report-section-num {
+    color: #0284c7 !important;
+    font-weight: 700 !important;
+  }
+
+  .report-section-title {
+    color: #0f172a !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+  }
+
+  .report-text {
+    color: #1e293b !important;
+  }
+
+  /* High-Contrast Tables */
+  .table-wrapper {
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+  }
+
+  .table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  .table th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  .table td {
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+    background-color: #ffffff !important;
+  }
+
+  .mono {
+    color: #0f172a !important;
+    font-weight: 600 !important;
+  }
+
+  /* Evidence & Recommendation Boxes */
+  .evidence-box {
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  .recommendation-box {
+    background-color: #f0fdf4 !important;
+    border: 1px solid #86efac !important;
+    color: #14532d !important;
+  }
+
+  /* Cards & Findings */
+  .card, .report-finding-card {
+    border: 1px solid #cbd5e1 !important;
+    background-color: #ffffff !important;
+    page-break-inside: avoid;
+  }
+
+  .report-finding-header {
+    background-color: #f8fafc !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  .report-finding-title {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+  }
+
+  /* Colored Badges Preservation in Print/PDF */
+  .badge {
+    border: 1px solid currentColor !important;
+    font-weight: 700 !important;
+    padding: 0.15rem 0.45rem !important;
+    border-radius: 4px !important;
+  }
+
+  .badge-critical {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    border-color: #ef4444 !important;
+  }
+
+  .badge-high {
+    background-color: #ffedd5 !important;
+    color: #9a3412 !important;
+    border-color: #f97316 !important;
+  }
+
+  .badge-medium, .badge-warning {
+    background-color: #fef3c7 !important;
+    color: #92400e !important;
+    border-color: #f59e0b !important;
+  }
+
+  .badge-low, .badge-info {
+    background-color: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #0284c7 !important;
+  }
+
+  .badge-success, .badge-completed {
+    background-color: #dcfce7 !important;
+    color: #166534 !important;
+    border-color: #16a34a !important;
+  }
+
+  .badge-obs, .badge-partial, .badge-secondary {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: #94a3b8 !important;
+  }
+
+  .badge-danger, .badge-failed {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    border-color: #dc2626 !important;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+}

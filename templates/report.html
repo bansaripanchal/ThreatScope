@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+
+{% block title %}Report &bull; {{ report.target.target if report else 'ThreatScope' }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/report.css') }}">
+{% endblock %}
+
+{% block content %}
+{% if report %}
+<div class="report-toolbar no-print">
+  <div style="display: flex; align-items: center; gap: 0.75rem;">
+    <a href="{{ url_for('web.workspace', investigation_id=investigation.id) }}" class="btn btn-secondary btn-sm">
+      &larr; Back to Workspace
+    </a>
+    <span class="badge badge-info">23-Section Official Audit</span>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 0.75rem;">
+    {% if all_investigations %}
+    <select class="form-select" style="width: auto; padding: 0.35rem 0.65rem; font-size: 0.8125rem;" onchange="window.location.href='/reports/' + this.value">
+      {% for inv in all_investigations %}
+      <option value="{{ inv.id }}" {% if inv.id == investigation.id %}selected{% endif %}>
+        {{ inv.target }} ({{ inv.started_at[:10] }})
+      </option>
+      {% endfor %}
+    </select>
+    {% endif %}
+
+    <button onclick="window.print()" class="btn btn-primary btn-sm">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print / Save PDF
+    </button>
+  </div>
+</div>
+
+<article class="report-container">
+  <!-- 1. COVER PAGE -->
+  <header class="report-cover">
+    <div class="report-cover-badge">Ethical Hacking &bull; VAPT Reconnaissance</div>
+    <h1 class="report-cover-title">ThreatScope Intelligence Report</h1>
+    <div class="report-cover-subtitle">Attack Surface & Technical Asset Assessment for <strong>{{ report.target.target }}</strong></div>
+
+    <div class="report-meta-grid">
+      <div class="report-meta-item">
+        <span class="report-meta-label">Target Asset</span>
+        <span class="report-meta-val mono">{{ report.target.target }} ({{ report.target.target_type }})</span>
+      </div>
+      <div class="report-meta-item">
+        <span class="report-meta-label">Investigation ID</span>
+        <span class="report-meta-val mono">{{ report.investigation_info.id }}</span>
+      </div>
+      <div class="report-meta-item">
+        <span class="report-meta-label">Audit Timestamp</span>
+        <span class="report-meta-val">{{ report.cover.date }}</span>
+      </div>
+      <div class="report-meta-item">
+        <span class="report-meta-label">Audit Authority</span>
+        <span class="report-meta-val">{{ report.cover.auditor }}</span>
+      </div>
+    </div>
+
+    <div class="report-confidentiality">
+      <strong>Confidentiality Notice:</strong> {{ report.cover.confidentiality }}. This document contains proprietary reconnaissance telemetry for authorized perimeter verification only.
+    </div>
+  </header>
+
+  <!-- 2. TARGET -->
+  <section class="report-section">
+    <div class="report-section-num">Section 02</div>
+    <h2 class="report-section-title">Target Specification</h2>
+    <p class="report-text">
+      The assessment evaluated <strong>{{ report.target.target }}</strong>. Inputs were normalized to canonical root FQDN format, resolving to verified IP routing endpoints.
+    </p>
+    <div class="table-wrapper">
+      <table class="table">
+        <tbody>
+          <tr><th style="width: 200px;">Target Value</th><td class="mono"><strong>{{ report.target.target }}</strong></td></tr>
+          <tr><th>Target Type</th><td class="mono">{{ report.target.target_type }}</td></tr>
+          <tr><th>Normalized Host</th><td class="mono">{{ report.target.normalized_target }}</td></tr>
+          <tr><th>Resolved IP Addresses</th><td class="mono">{{ report.target.resolved_ips|join(', ') if report.target.resolved_ips else 'Direct IP/Unresolved' }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. INVESTIGATION INFORMATION -->
+  <section class="report-section">
+    <div class="report-section-num">Section 03</div>
+    <h2 class="report-section-title">Investigation Information</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <tbody>
+          <tr><th style="width: 200px;">Investigation ID</th><td class="mono">{{ report.investigation_info.id }}</td></tr>
+          <tr><th>Scan Start Time</th><td class="mono">{{ report.investigation_info.started_at }}</td></tr>
+          <tr><th>Scan End Time</th><td class="mono">{{ report.investigation_info.completed_at }}</td></tr>
+          <tr><th>Execution Duration</th><td class="mono">{{ report.investigation_info.duration_seconds }} seconds</td></tr>
+          <tr><th>Platform Engine</th><td>ThreatScope {{ report.investigation_info.platform_version }}</td></tr>
+          <tr><th>Final Scan Status</th><td><span class="badge badge-{{ report.investigation_info.status.lower() }}">{{ report.investigation_info.status }}</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 4. SCOPE -->
+  <section class="report-section">
+    <div class="report-section-num">Section 04</div>
+    <h2 class="report-section-title">Scope & Rules of Engagement</h2>
+    <p class="report-text"><strong>Authorized Target Boundary:</strong> {{ report.scope.boundaries }}</p>
+    <p class="report-text"><strong>Rules of Engagement:</strong> {{ report.scope.rules_of_engagement }}</p>
+  </section>
+
+  <!-- 5. EXECUTIVE SUMMARY -->
+  <section class="report-section">
+    <div class="report-section-num">Section 05</div>
+    <h2 class="report-section-title">
+      Executive Summary
+      <span class="badge badge-{% if report.executive_summary.critical_count > 0 %}critical{% elif report.executive_summary.high_count > 0 %}high{% elif report.executive_summary.medium_count > 0 %}medium{% else %}success{% endif %}">
+        {{ report.executive_summary.risk_posture }}
+      </span>
+    </h2>
+    <p class="report-text">{{ report.executive_summary.summary_text }}</p>
+    <div class="grid grid-4" style="margin-top: 1rem;">
+      <div class="card" style="padding: 0.85rem; text-align: center;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Critical Risk</span>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-danger);">{{ report.executive_summary.critical_count }}</div>
+      </div>
+      <div class="card" style="padding: 0.85rem; text-align: center;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">High Risk</span>
+        <div style="font-size: 1.5rem; font-weight: 700; color: #f97316;">{{ report.executive_summary.high_count }}</div>
+      </div>
+      <div class="card" style="padding: 0.85rem; text-align: center;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Medium Risk</span>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-warning);">{{ report.executive_summary.medium_count }}</div>
+      </div>
+      <div class="card" style="padding: 0.85rem; text-align: center;">
+        <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Low / Info</span>
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-info);">{{ report.executive_summary.low_count + report.executive_summary.info_count }}</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. TARGET OVERVIEW -->
+  <section class="report-section">
+    <div class="report-section-num">Section 06</div>
+    <h2 class="report-section-title">Target Overview & Inventory</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Asset Category</th>
+            <th>Count</th>
+            <th>Telemetry Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Resolved IP Addresses</td><td class="mono"><strong>{{ report.target_overview.ips_count }}</strong></td><td>Verified via DNS A/AAAA</td></tr>
+          <tr><td>Discovered Subdomains</td><td class="mono"><strong>{{ report.target_overview.subdomains_count }}</strong></td><td>Certificate Transparency & DNS Wordlist</td></tr>
+          <tr><td>Open TCP Ports</td><td class="mono"><strong>{{ report.target_overview.ports_count }}</strong></td><td>Non-destructive connect scan</td></tr>
+          <tr><td>Public Web Endpoints</td><td class="mono"><strong>{{ report.target_overview.endpoints_count }}</strong></td><td>Standard paths & Same-origin crawl</td></tr>
+          <tr><td>Identified Technologies</td><td class="mono"><strong>{{ report.target_overview.technologies_count }}</strong></td><td>Passive signature analysis</td></tr>
+          <tr><td>DNS Records Enumerated</td><td class="mono"><strong>{{ report.target_overview.dns_records_count }}</strong></td><td>Authoritative recursive query</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7. WHOIS / RDAP -->
+  <section class="report-section">
+    <div class="report-section-num">Section 07</div>
+    <h2 class="report-section-title">WHOIS & RDAP Registration Intelligence</h2>
+    {% if report.whois and report.whois.status == 'SUCCESS' %}
+    <div class="table-wrapper">
+      <table class="table">
+        <tbody>
+          <tr><th style="width: 200px;">Registrar</th><td>{{ report.whois.registrar or 'Unavailable' }}</td></tr>
+          <tr><th>Creation Date</th><td class="mono">{{ report.whois.creation_date or 'Unavailable' }}</td></tr>
+          <tr><th>Expiration Date</th><td class="mono">{{ report.whois.expiration_date or 'Unavailable' }}</td></tr>
+          <tr><th>Last Updated</th><td class="mono">{{ report.whois.updated_date or 'Unavailable' }}</td></tr>
+          <tr><th>Nameservers</th><td class="mono">{{ report.whois.nameservers|join(', ') if report.whois.nameservers else 'None' }}</td></tr>
+          <tr><th>DNSSEC Status</th><td>{{ report.whois.dnssec or 'Unsigned' }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="report-text" style="color: var(--text-muted);">
+      Registration data status: <strong>{{ report.whois.status or 'UNAVAILABLE' }}</strong>. {{ report.whois.limitations or '' }}
+    </p>
+    {% endif %}
+  </section>
+
+  <!-- 8. DNS INTELLIGENCE -->
+  <section class="report-section">
+    <div class="report-section-num">Section 08</div>
+    <h2 class="report-section-title">DNS Intelligence & Email Authentication</h2>
+    <div class="table-wrapper" style="margin-bottom: 1.5rem;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Name</th>
+            <th>Value</th>
+            <th>TTL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in report.dns.records %}
+          <tr>
+            <td><span class="badge badge-info">{{ r.type }}</span></td>
+            <td class="mono">{{ r.name }}</td>
+            <td class="mono" style="word-break: break-all;">{{ r.value }}</td>
+            <td class="mono">{{ r.ttl }}s</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No DNS records recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="table-wrapper">
+      <table class="table">
+        <tbody>
+          <tr>
+            <th style="width: 200px;">SPF Policy</th>
+            <td>{{ report.dns.spf.raw if report.dns.spf else 'Missing SPF Record (Spoofing vulnerability)' }}</td>
+          </tr>
+          <tr>
+            <th>DMARC Policy</th>
+            <td>{{ report.dns.dmarc.raw if report.dns.dmarc else 'Missing DMARC Policy Record' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 9. IP INTELLIGENCE -->
+  <section class="report-section">
+    <div class="report-section-num">Section 09</div>
+    <h2 class="report-section-title">IP & Network Routing Intelligence</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <tbody>
+          <tr><th style="width: 200px;">Queried IP</th><td class="mono">{{ report.ip_intelligence.ip or 'N/A' }}</td></tr>
+          <tr><th>Reverse DNS (PTR)</th><td class="mono">{{ report.ip_intelligence.reverse_dns or 'N/A' }}</td></tr>
+          <tr><th>Autonomous System (ASN)</th><td class="mono">{{ report.ip_intelligence.asn or 'N/A' }}</td></tr>
+          <tr><th>ISP / Organization</th><td>{{ report.ip_intelligence.organization or report.ip_intelligence.isp or 'N/A' }}</td></tr>
+          <tr><th>Country / Region / City</th><td>{{ report.ip_intelligence.city or '' }}, {{ report.ip_intelligence.region or '' }} {{ report.ip_intelligence.country or 'N/A' }}</td></tr>
+          <tr><th>Timezone</th><td>{{ report.ip_intelligence.timezone or 'N/A' }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 10. SUBDOMAIN INTELLIGENCE -->
+  <section class="report-section">
+    <div class="report-section-num">Section 10</div>
+    <h2 class="report-section-title">Subdomain Intelligence</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Subdomain</th>
+            <th>Resolved IP(s)</th>
+            <th>HTTP Status</th>
+            <th>HTTPS Status</th>
+            <th>Discovery Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in report.subdomains.subdomains %}
+          <tr>
+            <td class="mono"><strong>{{ s.subdomain }}</strong></td>
+            <td class="mono" style="font-size: 0.8125rem;">{{ s.ips|join(', ') if s.ips else 'Unresolved' }}</td>
+            <td>{{ s.http_status or '-' }}</td>
+            <td>{{ s.https_status or '-' }}</td>
+            <td style="font-size: 0.75rem; color: var(--text-muted);">{{ s.source }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No subdomains discovered.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 11. ENDPOINT DISCOVERY -->
+  <section class="report-section">
+    <div class="report-section-num">Section 11</div>
+    <h2 class="report-section-title">Web Endpoint Discovery</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Status Code</th>
+            <th>Size</th>
+            <th>Content-Type</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ep in report.endpoints.endpoints %}
+          <tr>
+            <td class="mono"><strong>{{ ep.endpoint }}</strong></td>
+            <td class="mono" style="font-size: 0.75rem;">{{ ep.method }}</td>
+            <td><span class="badge badge-obs">{{ ep.status_code }}</span></td>
+            <td class="mono" style="font-size: 0.75rem;">{{ ep.response_size }} B</td>
+            <td style="font-size: 0.75rem;">{{ ep.content_type }}</td>
+            <td style="font-size: 0.75rem; color: var(--text-muted);">{{ ep.source }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No public endpoints discovered.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 12. PORT & SERVICE ENUMERATION -->
+  <section class="report-section">
+    <div class="report-section-num">Section 12</div>
+    <h2 class="report-section-title">Port & Service Enumeration</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Port</th>
+            <th>Protocol</th>
+            <th>State</th>
+            <th>Service</th>
+            <th>Banner</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in report.ports_and_services.open_ports %}
+          <tr>
+            <td class="mono"><strong>{{ p.port }}</strong></td>
+            <td>{{ p.protocol }}</td>
+            <td><span class="badge badge-success">{{ p.state }}</span></td>
+            <td>{{ p.service }}</td>
+            <td class="mono" style="font-size: 0.75rem; color: var(--text-secondary);">{{ p.banner or 'None' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No open ports discovered in scan range.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 13. SSL / TLS -->
+  <section class="report-section">
+    <div class="report-section-num">Section 13</div>
+    <h2 class="report-section-title">SSL / TLS Cryptographic Inspection</h2>
+    {% if report.ssl_tls and report.ssl_tls.status == 'SUCCESS' %}
+    <div class="table-wrapper">
+      <table class="table">
+        <tbody>
+          <tr><th style="width: 200px;">Subject Common Name</th><td class="mono">{{ report.ssl_tls.subject.common_name }}</td></tr>
+          <tr><th>Issuer Organization</th><td>{{ report.ssl_tls.issuer.organization or report.ssl_tls.issuer.common_name }}</td></tr>
+          <tr><th>Negotiated TLS Version</th><td class="mono">{{ report.ssl_tls.tls_version }}</td></tr>
+          <tr><th>Cipher Suite</th><td class="mono">{{ report.ssl_tls.cipher.name if report.ssl_tls.cipher else 'N/A' }}</td></tr>
+          <tr><th>Valid Until</th><td class="mono">{{ report.ssl_tls.valid_until }} ({{ report.ssl_tls.days_remaining }} days remaining)</td></tr>
+          <tr><th>Hostname Match Status</th><td>{{ 'Verified' if report.ssl_tls.hostname_verified else 'MISMATCH' }}</td></tr>
+          <tr><th>Subject Alternative Names</th><td class="mono" style="font-size: 0.75rem;">{{ report.ssl_tls.sans|join(', ') }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="report-text" style="color: var(--text-muted);">TLS Handshake status: {{ report.ssl_tls.status or 'UNAVAILABLE' }}</p>
+    {% endif %}
+  </section>
+
+  <!-- 14. HTTP HEADERS -->
+  <section class="report-section">
+    <div class="report-section-num">Section 14</div>
+    <h2 class="report-section-title">HTTP Response & Server Headers</h2>
+    <div class="table-wrapper" style="margin-bottom: 1rem;">
+      <table class="table">
+        <tbody>
+          <tr><th style="width: 200px;">Status Line</th><td>{{ report.http_headers.status_code }} {{ report.http_headers.reason }}</td></tr>
+          <tr><th>Server Header</th><td class="mono">{{ report.http_headers.server or 'Not Disclosed' }}</td></tr>
+          <tr><th>Content-Type</th><td class="mono">{{ report.http_headers.content_type }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <pre class="evidence-box">{{ report.http_headers.raw_headers|join('\n') }}</pre>
+  </section>
+
+  <!-- 15. SECURITY HEADERS -->
+  <section class="report-section">
+    <div class="report-section-num">Section 15</div>
+    <h2 class="report-section-title">Defensive Security Headers Evaluation</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Header</th>
+            <th>Status</th>
+            <th>Value</th>
+            <th>Remediation Recommendation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for h in report.security_headers.headers %}
+          <tr>
+            <td><strong>{{ h.header }}</strong></td>
+            <td>
+              <span class="badge badge-{% if h.status == 'STRONG' %}success{% elif h.status == 'SUBOPTIMAL' %}warning{% else %}danger{% endif %}">
+                {{ h.status }}
+              </span>
+            </td>
+            <td class="mono" style="font-size: 0.75rem; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ h.value or 'None' }}</td>
+            <td style="font-size: 0.8125rem;">{{ h.recommendation }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 16. TECHNOLOGY DETECTION -->
+  <section class="report-section">
+    <div class="report-section-num">Section 16</div>
+    <h2 class="report-section-title">Technology Detection Inventory</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Technology</th>
+            <th>Category</th>
+            <th>Confidence</th>
+            <th>Evidence Telemetry</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in report.technologies %}
+          <tr>
+            <td><strong>{{ t.name }}</strong></td>
+            <td><span class="badge badge-obs">{{ t.category }}</span></td>
+            <td><span class="badge badge-info">{{ t.confidence }}</span></td>
+            <td class="mono" style="font-size: 0.8125rem;">{{ t.evidence }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No technology signatures matched.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 17. ATTACK SURFACE -->
+  <section class="report-section">
+    <div class="report-section-num">Section 17</div>
+    <h2 class="report-section-title">Attack Surface Graph Structure</h2>
+    <p class="report-text">
+      The topological attack surface graph is composed of <strong>{{ report.attack_surface.node_count or 0 }}</strong> asset nodes 
+      and <strong>{{ report.attack_surface.edge_count or 0 }}</strong> verified relational edges.
+    </p>
+    <div class="table-wrapper">
+      <table class="table">
+        <tbody>
+          <tr><th style="width: 200px;">Node Inventory</th><td>{{ report.attack_surface.node_count or 0 }} assets mapped</td></tr>
+          <tr><th>Relationship Edges</th><td>{{ report.attack_surface.edge_count or 0 }} deterministic links</td></tr>
+          <tr><th>Mapped Node Categories</th><td>{{ report.attack_surface.node_types|join(', ') if report.attack_surface.node_types else 'None' }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 18. FINDINGS -->
+  <section class="report-section">
+    <div class="report-section-num">Section 18</div>
+    <h2 class="report-section-title">Verifiable Findings</h2>
+    {% for f in report.findings %}
+    <div class="report-finding-card">
+      <div class="report-finding-header">
+        <div class="report-finding-title">{{ f.title }}</div>
+        <span class="badge badge-{{ f.severity.lower() }}">{{ f.severity }}</span>
+      </div>
+      <div class="report-finding-body">
+        <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.75rem;">{{ f.description }}</div>
+        <div style="font-size: 0.8125rem;"><strong>Affected Asset:</strong> <span class="mono">{{ f.affected_asset }}</span></div>
+        <div style="font-size: 0.8125rem; margin-top: 0.25rem;"><strong>Source:</strong> {{ f.source }} &bull; <span class="mono">{{ f.timestamp[:19].replace('T', ' ') }}</span></div>
+        <div class="evidence-box"><strong>Verifiable Evidence:</strong>\n{{ f.evidence }}</div>
+        <div class="recommendation-box"><strong>Remediation:</strong> {{ f.recommendation }}</div>
+      </div>
+    </div>
+    {% else %}
+    <p class="report-text" style="color: var(--text-muted);">Zero findings recorded for this target scope.</p>
+    {% endfor %}
+  </section>
+
+  <!-- 19. EVIDENCE -->
+  <section class="report-section">
+    <div class="report-section-num">Section 19</div>
+    <h2 class="report-section-title">Technical Evidence Index</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Finding</th>
+            <th>Affected Asset</th>
+            <th>Raw Evidence Snippet</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ev in report.evidence %}
+          <tr>
+            <td>{{ ev.id }}</td>
+            <td><strong>{{ ev.finding_title }}</strong></td>
+            <td class="mono" style="font-size: 0.75rem;">{{ ev.affected_asset }}</td>
+            <td class="mono" style="font-size: 0.75rem; word-break: break-all;">{{ ev.evidence }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">No evidence records cataloged.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 20. RECOMMENDATIONS -->
+  <section class="report-section">
+    <div class="report-section-num">Section 20</div>
+    <h2 class="report-section-title">Prioritized Strategic Recommendations</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Priority</th>
+            <th>Observation</th>
+            <th>Strategic Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rec in report.recommendations %}
+          <tr>
+            <td><span class="badge badge-{{ rec.severity.lower() }}">{{ rec.severity }}</span></td>
+            <td><strong>{{ rec.title }}</strong></td>
+            <td style="font-size: 0.875rem;">{{ rec.action }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" style="text-align: center; color: var(--text-muted);">No recommendations pending.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 21. RECON TIMELINE -->
+  <section class="report-section">
+    <div class="report-section-num">Section 21</div>
+    <h2 class="report-section-title">Reconnaissance Audit Timeline</h2>
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Operation</th>
+            <th>Status</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in report.timeline %}
+          <tr>
+            <td class="mono" style="font-size: 0.75rem;">{{ t.timestamp[:19].replace('T', ' ') }}</td>
+            <td>{{ t.operation }}</td>
+            <td><span class="badge badge-{{ t.status.lower() }}">{{ t.status }}</span></td>
+            <td class="mono" style="font-size: 0.75rem;">{{ t.duration_ms }}ms</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Timeline log not attached.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 22. COMPARISON INFORMATION -->
+  <section class="report-section">
+    <div class="report-section-num">Section 22</div>
+    <h2 class="report-section-title">Comparison & Delta Information</h2>
+    <p class="report-text">
+      {{ report.comparison.message or 'Baseline differential analysis attached below.' }}
+    </p>
+    {% if report.comparison.summary %}
+    <div class="grid grid-4">
+      <div class="card" style="padding: 0.75rem; text-align: center;"><span style="color: var(--color-success);">+{{ report.comparison.summary.added }} Added</span></div>
+      <div class="card" style="padding: 0.75rem; text-align: center;"><span style="color: var(--color-danger);">-{{ report.comparison.summary.removed }} Removed</span></div>
+      <div class="card" style="padding: 0.75rem; text-align: center;"><span style="color: var(--color-warning);">{{ report.comparison.summary.changed }} Changed</span></div>
+      <div class="card" style="padding: 0.75rem; text-align: center;"><span>{{ report.comparison.summary.unchanged }} Unchanged</span></div>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- 23. LIMITATIONS & SOURCES -->
+  <section class="report-section">
+    <div class="report-section-num">Section 23</div>
+    <h2 class="report-section-title">Reconnaissance Limitations & Intelligence Sources</h2>
+    <div class="grid grid-2">
+      <div>
+        <h4 style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0.5rem;">Intelligence Sources Utilized</h4>
+        <ul style="padding-left: 1.25rem; font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.8;">
+          {% for src in report.limitations.sources %}
+          <li>{{ src }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div>
+        <h4 style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0.5rem;">Methodological Boundaries</h4>
+        <ul style="padding-left: 1.25rem; font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.8;">
+          {% for cav in report.limitations.caveats %}
+          <li>{{ cav }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </section>
+</article>
+{% else %}
+<div class="card" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+  No report data available. Execute an investigation to compile a 23-section report.
+</div>
+{% endif %}
+{% endblock %}

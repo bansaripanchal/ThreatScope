@@ -1,0 +1,188 @@
+/* ==========================================================================
+   ThreatScope V2 - Attack Surface Map CSS
+   Styles for the interactive graph canvas, filters, toolbar, and inspector.
+   ========================================================================== */
+
+.surface-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 180px);
+  min-height: 600px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  position: relative;
+}
+
+.surface-toolbar {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-surface-secondary);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  z-index: 10;
+}
+
+.surface-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.surface-filters {
+  padding: 0.5rem 1.25rem;
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.75rem;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.filter-chip.active {
+  background-color: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.filter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.surface-canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.surface-canvas-container:active {
+  cursor: grabbing;
+}
+
+#surfaceCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Floating Node Inspector */
+.node-inspector {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 340px;
+  max-width: calc(100% - 2rem);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 1.25rem;
+  z-index: 20;
+  display: none;
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+}
+
+.node-inspector.open {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.inspector-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.inspector-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.inspector-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+}
+
+.inspector-meta-row {
+  margin-bottom: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.inspector-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.inspector-val {
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+/* Legend */
+.surface-legend {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}

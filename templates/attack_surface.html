@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Attack Surface Map &bull; ThreatScope{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attack_surface.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 1rem;">
+  <div>
+    <h1 class="page-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Attack Surface Map
+    </h1>
+    <p class="page-subtitle">Interactive topological visualization of discovered domains, IP routes, services, and cryptographic boundaries.</p>
+  </div>
+
+  <!-- Investigation Switcher -->
+  {% if all_investigations %}
+  <div style="display: flex; align-items: center; gap: 0.5rem;">
+    <label for="invSelect" style="font-size: 0.8125rem; color: var(--text-secondary); font-weight: 600;">Target:</label>
+    <select id="invSelect" class="form-select" style="width: auto; padding: 0.4rem 0.75rem; font-size: 0.8125rem;" onchange="window.location.href='/attack-surface/' + this.value">
+      {% for inv in all_investigations %}
+      <option value="{{ inv.id }}" {% if investigation and inv.id == investigation.id %}selected{% endif %}>
+        {{ inv.target }} ({{ inv.started_at[:10] }})
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+</div>
+
+{% if investigation and graph_data %}
+<div class="surface-wrapper">
+  <!-- Top Toolbar -->
+  <div class="surface-toolbar">
+    <div class="surface-controls">
+      <button id="btnZoomIn" class="btn btn-secondary btn-sm" title="Zoom In">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button id="btnZoomOut" class="btn btn-secondary btn-sm" title="Zoom Out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button id="btnReset" class="btn btn-secondary btn-sm" title="Center View">Fit & Center</button>
+    </div>
+
+    <!-- Search Input -->
+    <div style="flex: 1; max-width: 260px; margin-left: 1rem;">
+      <input type="text" id="surfaceSearch" class="form-input" placeholder="Search node or asset..." style="padding: 0.35rem 0.65rem; font-size: 0.8125rem;">
+    </div>
+
+    <div style="font-size: 0.8125rem; color: var(--text-secondary); display: flex; gap: 1rem;">
+      <span><strong>{{ graph_data.node_count }}</strong> Nodes</span>
+      <span><strong>{{ graph_data.edge_count }}</strong> Relationships</span>
+    </div>
+  </div>
+
+  <!-- Filter Chips Bar -->
+  <div class="surface-filters">
+    <span style="font-weight: 600; color: var(--text-muted); margin-right: 0.25rem;">Filter:</span>
+    <span class="filter-chip active" data-type="target"><span class="filter-dot" style="background:#8b5cf6;"></span>Target</span>
+    <span class="filter-chip active" data-type="subdomain"><span class="filter-dot" style="background:#60a5fa;"></span>Subdomain</span>
+    <span class="filter-chip active" data-type="ip"><span class="filter-dot" style="background:#06b6d4;"></span>IP</span>
+    <span class="filter-chip active" data-type="port"><span class="filter-dot" style="background:#f97316;"></span>Port</span>
+    <span class="filter-chip active" data-type="service"><span class="filter-dot" style="background:#facc15;"></span>Service</span>
+    <span class="filter-chip active" data-type="technology"><span class="filter-dot" style="background:#10b981;"></span>Technology</span>
+    <span class="filter-chip active" data-type="certificate"><span class="filter-dot" style="background:#6366f1;"></span>Certificate</span>
+    <span class="filter-chip active" data-type="endpoint"><span class="filter-dot" style="background:#94a3b8;"></span>Endpoint</span>
+    <span class="filter-chip active" data-type="dns_record"><span class="filter-dot" style="background:#ec4899;"></span>DNS</span>
+  </div>
+
+  <!-- Canvas Container -->
+  <div class="surface-canvas-container">
+    <canvas id="surfaceCanvas"></canvas>
+
+    <!-- Floating Node Inspector Panel -->
+    <div id="nodeInspector" class="node-inspector">
+      <div class="inspector-header">
+        <div id="inspTitle" class="inspector-title">Asset Name</div>
+        <button class="inspector-close" onclick="document.getElementById('nodeInspector').classList.remove('open')">&times;</button>
+      </div>
+
+      <div class="inspector-meta-row">
+        <span class="inspector-label">Type</span>
+        <span id="inspType" class="badge badge-info">NODE</span>
+      </div>
+
+      <div class="inspector-meta-row">
+        <span class="inspector-label">Value</span>
+        <div id="inspValue" class="inspector-val mono">--</div>
+      </div>
+
+      <div class="inspector-meta-row">
+        <span class="inspector-label">Provenance Source</span>
+        <div id="inspSource" class="inspector-val" style="font-size: 0.8125rem;">--</div>
+      </div>
+
+      <div class="inspector-meta-row">
+        <span class="inspector-label">Telemetry Evidence</span>
+        <div id="inspEvidence" class="evidence-box" style="margin-top: 0.2rem; max-height: 120px; overflow-y: auto;">--</div>
+      </div>
+
+      <div class="inspector-meta-row" style="margin-top: 0.75rem;">
+        <span class="inspector-label">Connected Assets</span>
+        <ul id="inspRelated" style="padding-left: 1.25rem; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.6;"></ul>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="surface-legend">
+      <div class="legend-item"><span class="filter-dot" style="background:#8b5cf6;"></span>Target</div>
+      <div class="legend-item"><span class="filter-dot" style="background:#60a5fa;"></span>Subdomain</div>
+      <div class="legend-item"><span class="filter-dot" style="background:#06b6d4;"></span>IP</div>
+      <div class="legend-item"><span class="filter-dot" style="background:#f97316;"></span>Port</div>
+      <div class="legend-item"><span class="filter-dot" style="background:#facc15;"></span>Service</div>
+      <div class="legend-item"><span class="filter-dot" style="background:#10b981;"></span>Tech</div>
+      <div class="legend-item"><span class="filter-dot" style="background:#6366f1;"></span>Cert</div>
+      <div class="legend-item"><span class="filter-dot" style="background:#94a3b8;"></span>Endpoint</div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+  No attack surface data available. Run an investigation to generate the asset graph.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/attack_surface.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    {% if graph_data %}
+    const graphData = {{ (graph_data or {})|tojson }};
+    new AttackSurfaceGraph('surfaceCanvas', graphData);
+    {% endif %}
+  });
+</script>
+{% endblock %}

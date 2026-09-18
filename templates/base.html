@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}ThreatScope - Attack Surface Intelligence{% endblock %}</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- CSS Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design_system.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  {% block extra_css %}{% endblock %}
+
+  <!-- Immediate Theme Initializer -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('threatscope-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+</head>
+<body>
+  <!-- Global Navigation -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="{{ url_for('web.dashboard') }}" class="navbar-brand">
+        {% include "components/brand.html" %}
+      </a>
+
+      <ul class="navbar-nav">
+        <li><a href="{{ url_for('web.dashboard') }}" class="nav-link {% if request.endpoint == 'web.dashboard' %}active{% endif %}">Dashboard</a></li>
+        <li><a href="{{ url_for('web.investigate') }}" class="nav-link {% if request.endpoint in ('web.investigate', 'web.workspace') %}active{% endif %}">Investigate</a></li>
+        <li><a href="{{ url_for('web.attack_surface') }}" class="nav-link {% if request.endpoint == 'web.attack_surface' %}active{% endif %}">Attack Surface</a></li>
+        <li><a href="{{ url_for('web.history') }}" class="nav-link {% if request.endpoint == 'web.history' %}active{% endif %}">History</a></li>
+        <li><a href="{{ url_for('web.reports') }}" class="nav-link {% if request.endpoint == 'web.reports' %}active{% endif %}">Reports</a></li>
+        <li><a href="{{ url_for('web.about') }}" class="nav-link {% if request.endpoint == 'web.about' %}active{% endif %}">About</a></li>
+      </ul>
+
+      <div class="navbar-actions">
+        <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle Theme" title="Switch Theme">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main View Container -->
+  <main class="app-container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Global Inspection Detail Drawer -->
+  <div id="globalDrawerOverlay" class="drawer-overlay"></div>
+  <div id="globalDrawer" class="drawer" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <div>
+        <div id="drawerTitle" class="drawer-title">Inspection Details</div>
+        <div id="drawerMetaRow" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.35rem;">
+          <span id="drawerSeverityBadge" class="badge badge-info" style="display: none;">INFO</span>
+          <span id="drawerAssetPill" class="mono" style="font-size: 0.75rem; background: var(--bg-surface-secondary); padding: 0.15rem 0.45rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: none;">--</span>
+        </div>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()" aria-label="Close Drawer">&times;</button>
+    </div>
+    <div class="drawer-body">
+      <!-- What was observed -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          What Was Observed
+        </div>
+        <div id="drawerFound" class="drawer-info-box">Findings description.</div>
+      </div>
+
+      <!-- Recommendation -->
+      <div id="drawerRecSection" class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Actionable Recommendation
+        </div>
+        <div id="drawerRecommendation" class="drawer-info-box" style="border-left: 3px solid var(--accent-primary);">Remediation guidance.</div>
+      </div>
+
+      <!-- Technical Evidence -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          Technical Evidence
+        </div>
+        <pre id="drawerEvidence" style="background: var(--bg-surface-secondary); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 0.8125rem; color: var(--text-primary); white-space: pre-wrap; word-break: break-all; max-height: 240px; overflow-y: auto;"></pre>
+      </div>
+
+      <!-- Provenance & Metadata -->
+      <div class="drawer-section">
+        <div class="drawer-section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Discovery Provenance & Metadata
+        </div>
+        <div style="font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.8;">
+          <div><strong>Discovery Source:</strong> <span id="drawerSource">Authoritative Recon</span></div>
+          <div><strong>Observation Timestamp:</strong> <span id="drawerTime" class="mono">--</span></div>
+          <div><strong>Technical Detail:</strong> <span id="drawerTechnical">Standard Socket/HTTP</span></div>
+          <div><strong>Verification Scope:</strong> <span id="drawerLimitations">Non-destructive bounded reconnaissance.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Footer -->
+  <footer class="footer">
+    <div><strong>ThreatScope</strong> &bull; Ethical Hacking, Reconnaissance, VAPT & Attack-Surface Intelligence Platform</div>
+    <div style="margin-top: 0.35rem; font-size: 0.75rem;">Authorized Security Audits Only &bull; Non-Destructive Bounded Reconnaissance</div>
+  </footer>
+
+  <!-- Base JS Scripts -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

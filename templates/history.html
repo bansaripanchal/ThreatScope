@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Investigation History &bull; ThreatScope{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+      Investigation History
+    </h1>
+    <p class="page-subtitle">Persistent repository of historical reconnaissance assessments, asset inventories, and findings.</p>
+  </div>
+  <a href="{{ url_for('web.investigate') }}" class="btn btn-primary">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+    Start Investigation
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Past Investigations Log ({{ total_count }})</h2>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Target</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Started (UTC)</th>
+          <th>Duration</th>
+          <th>Findings</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in investigations %}
+        <tr id="row-{{ inv.id }}">
+          <td>
+            <a href="{{ url_for('web.workspace', investigation_id=inv.id) }}" style="font-weight: 700; color: var(--accent-primary); text-decoration: none;">
+              {{ inv.target }}
+            </a>
+            <div class="mono" style="font-size: 0.6875rem; color: var(--text-muted);">{{ inv.id }}</div>
+          </td>
+          <td><span class="mono" style="font-size: 0.75rem;">{{ inv.target_type }}</span></td>
+          <td><span class="badge badge-{{ inv.status.lower() }}">{{ inv.status }}</span></td>
+          <td class="mono" style="font-size: 0.75rem;">{{ inv.started_at[:19].replace('T', ' ') }}</td>
+          <td class="mono" style="font-size: 0.75rem;">{{ inv.duration_seconds or 0 }}s</td>
+          <td>
+            <span class="badge badge-info">{{ inv.findings_count }}</span>
+          </td>
+          <td>
+            <div style="display: flex; gap: 0.35rem;">
+              <a href="{{ url_for('web.workspace', investigation_id=inv.id) }}" class="btn btn-secondary btn-sm">Open</a>
+              <a href="{{ url_for('web.compare', a=inv.id) }}" class="btn btn-secondary btn-sm">Compare</a>
+              <a href="{{ url_for('web.reports', investigation_id=inv.id) }}" class="btn btn-secondary btn-sm">Report</a>
+              <button class="btn btn-danger btn-sm" onclick="deleteInvestigation('{{ inv.id }}', '{{ inv.target }}')">Delete</button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+            No historical records found. Run an investigation to populate the database.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function deleteInvestigation(id, target) {
+    if (!confirm(`Are you sure you want to delete investigation for "${target}" (${id})? This will permanently remove all associated telemetry and findings.`)) {
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/investigate/${id}`, { method: 'DELETE' });
+      const data = await resp.json();
+      if (data.success) {
+        const row = document.getElementById(`row-${id}`);
+        if (row) row.remove();
+      } else {
+        alert('Failed to delete investigation.');
+      }
+    } catch (err) {
+      alert(`Error deleting record: ${err.message}`);
+    }
+  }
+</script>
+{% endblock %}

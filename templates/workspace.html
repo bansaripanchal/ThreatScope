@@ -1,0 +1,903 @@
+{% extends "base.html" %}
+
+{% block title %}{{ investigation.target }} &bull; Investigation Workspace{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attack_surface.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set data = investigation.data %}
+
+<!-- ==========================================================================
+     Top Target Information & Status Header (Domain & IP Prominently Displayed)
+     ========================================================================== -->
+<div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <div style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; color: var(--accent-primary); text-transform: uppercase; margin-bottom: 0.25rem;">
+        ThreatScope Intelligence Investigation
+      </div>
+      <h1 style="font-size: 1.65rem; font-weight: 800; color: var(--text-primary); margin: 0; line-height: 1.25;">
+        {{ investigation.target }}
+      </h1>
+      <div style="margin-top: 0.6rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <div style="display: inline-flex; align-items: center; gap: 0.45rem; background: var(--bg-surface-secondary); padding: 0.3rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+          <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">IP Address</span>
+          <span id="topPrimaryIp" class="mono" style="font-size: 0.875rem; font-weight: 700; color: var(--accent-primary);">
+            {{ primary_ip or 'Resolving...' }}
+          </span>
+        </div>
+        <span class="mono" style="font-size: 0.75rem; background: var(--bg-surface-secondary); padding: 0.3rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); color: var(--text-secondary);">
+          {{ investigation.target_type }}
+        </span>
+        <span class="mono" style="font-size: 0.75rem; color: var(--text-muted);">ID: {{ investigation.id }}</span>
+      </div>
+    </div>
+
+    <!-- Status & Action Buttons -->
+    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.65rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span id="invStatusPill" class="badge {% if investigation.status == 'RUNNING' %}badge-running{% elif investigation.status == 'COMPLETED' %}badge-success{% elif investigation.status == 'PARTIAL' %}badge-warning{% else %}badge-danger{% endif %}" style="font-size: 0.875rem; padding: 0.35rem 0.75rem;">
+          {% if investigation.status == 'RUNNING' %}
+            <span class="pulse-dot"></span> RUNNING
+          {% elif investigation.status == 'PARTIAL' %}
+            PARTIALLY COMPLETED
+          {% else %}
+            {{ investigation.status }}
+          {% endif %}
+        </span>
+      </div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a href="{{ url_for('web.reports', investigation_id=investigation.id) }}" class="btn btn-primary btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          View Report
+        </a>
+        <a href="{{ url_for('web.compare', a=investigation.id) }}" class="btn btn-outline btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Compare
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visually Obvious RUNNING State Banner -->
+  <div id="runningIndicatorCard" style="{% if investigation.status != 'RUNNING' and investigation.status != 'PENDING' %}display: none;{% endif %} margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: var(--radius-md); background: var(--accent-light); border: 1px solid var(--accent-border);">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span class="pulse-dot" style="width: 10px; height: 10px;"></span>
+        <div>
+          <div style="font-size: 0.8125rem; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.05em;">
+            Reconnaissance Pipeline Running
+          </div>
+          <div id="liveOperationName" style="font-size: 0.875rem; color: var(--text-primary); font-weight: 600; margin-top: 0.15rem;">
+            Executing active reconnaissance modules against <span class="mono">{{ investigation.target }}</span>...
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.75rem; color: var(--text-secondary);">
+        <div>Started: <span class="mono">{{ investigation.started_at[:19].replace('T', ' ') }} UTC</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     Investigation Workspace: Left-Side Vertical Navigation Layout
+     ========================================================================== -->
+<div class="workspace-layout">
+  <!-- Left Navigation Sidebar -->
+  <aside class="inv-nav-sidebar" aria-label="Investigation Sections Navigation">
+    <div class="inv-nav-header">Navigation</div>
+    
+    <button class="inv-nav-btn active" data-section="overview">
+      <span class="inv-nav-label">
+        <span class="inv-nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </span>
+        OVERVIEW
+      </span>
+    </button>
+
+    <button class="inv-nav-btn" data-section="findings">
+      <span class="inv-nav-label">
+        <span class="inv-nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        FINDINGS
+      </span>
+      <span class="inv-nav-count">{{ findings|length }}</span>
+    </button>
+
+    <button class="inv-nav-btn" data-section="network">
+      <span class="inv-nav-label">
+        <span class="inv-nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </span>
+        NETWORK
+      </span>
+      <span class="inv-nav-count">{{ data.dns.records|length if data.dns and data.dns.records else 0 }}</span>
+    </button>
+
+    <button class="inv-nav-btn" data-section="domain">
+      <span class="inv-nav-label">
+        <span class="inv-nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </span>
+        DOMAIN
+      </span>
+      <span class="inv-nav-count">{{ data.subdomains.total_discovered if data.subdomains else 0 }}</span>
+    </button>
+
+    <button class="inv-nav-btn" data-section="web">
+      <span class="inv-nav-label">
+        <span class="inv-nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </span>
+        WEB
+      </span>
+      <span class="inv-nav-count">{{ data.technologies|length if data.technologies else 0 }}</span>
+    </button>
+
+    <button class="inv-nav-btn" data-section="services">
+      <span class="inv-nav-label">
+        <span class="inv-nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </span>
+        SERVICES
+      </span>
+      <span class="inv-nav-count">{{ data.ports.open_ports_count if data.ports else 0 }}</span>
+    </button>
+
+    <button class="inv-nav-btn" data-section="attack-surface">
+      <span class="inv-nav-label">
+        <span class="inv-nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </span>
+        ATTACK SURFACE
+      </span>
+    </button>
+
+    <button class="inv-nav-btn" data-section="timeline">
+      <span class="inv-nav-label">
+        <span class="inv-nav-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+        </span>
+        TIMELINE
+      </span>
+      <span class="inv-nav-count">{{ timeline|length }}</span>
+    </button>
+  </aside>
+
+  <!-- Right-Side Selected Section Content -->
+  <div class="workspace-content">
+
+    <!-- ======================================================================
+         SECTION 1: OVERVIEW
+         ====================================================================== -->
+    <div id="section-overview" class="workspace-section active">
+      <!-- 4 Core Overview Metrics -->
+      <div class="grid grid-4" style="margin-bottom: 1.5rem;">
+        <div class="card metric-card" style="padding: 1rem 1.25rem;">
+          <div class="metric-header">
+            <span class="metric-label">Security Findings</span>
+            <div class="metric-icon" style="color: {% if findings|length > 0 %}var(--accent-primary){% else %}var(--text-muted){% endif %}; background: var(--accent-light);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+          </div>
+          <div class="metric-value" style="color: var(--accent-primary);">{{ findings|length }}</div>
+          <div class="metric-meta">{{ findings|selectattr('severity', 'equalto', 'CRITICAL')|list|length }} Crit &bull; {{ findings|selectattr('severity', 'equalto', 'HIGH')|list|length }} High &bull; {{ findings|selectattr('severity', 'equalto', 'MEDIUM')|list|length }} Med</div>
+        </div>
+
+        <div class="card metric-card" style="padding: 1rem 1.25rem;">
+          <div class="metric-header">
+            <span class="metric-label">Subdomains</span>
+            <div class="metric-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </div>
+          </div>
+          <div class="metric-value">{{ data.subdomains.total_discovered if data.subdomains else 0 }}</div>
+          <div class="metric-meta">Discovered via passive OSINT & DNS</div>
+        </div>
+
+        <div class="card metric-card" style="padding: 1rem 1.25rem;">
+          <div class="metric-header">
+            <span class="metric-label">Open Ports</span>
+            <div class="metric-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            </div>
+          </div>
+          <div class="metric-value">{{ data.ports.open_ports_count if data.ports else 0 }}</div>
+          <div class="metric-meta">Exposed TCP listener services</div>
+        </div>
+
+        <div class="card metric-card" style="padding: 1rem 1.25rem;">
+          <div class="metric-header">
+            <span class="metric-label">Web Endpoints</span>
+            <div class="metric-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+          </div>
+          <div class="metric-value">{{ data.endpoints.total_endpoints if data.endpoints else 0 }}</div>
+          <div class="metric-meta">Discovered HTTP paths & routes</div>
+        </div>
+      </div>
+
+      <!-- Target Asset Profile & High-Level Summary -->
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Target Asset Profile</h2>
+          <span class="badge badge-info">{{ investigation.target_type }}</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <tbody>
+              <tr><th style="width: 220px;">Target Asset</th><td class="mono"><strong>{{ investigation.target }}</strong></td></tr>
+              <tr><th>Target Type</th><td class="mono">{{ investigation.target_type }}</td></tr>
+              <tr><th>Resolved Primary IP</th><td class="mono"><strong>{{ primary_ip or 'Unresolved / In Progress' }}</strong></td></tr>
+              <tr><th>Investigation Status</th><td><span class="badge badge-{{ investigation.status.lower() }}">{% if investigation.status == 'PARTIAL' %}PARTIALLY COMPLETED{% else %}{{ investigation.status }}{% endif %}</span></td></tr>
+              <tr><th>Execution Duration</th><td class="mono">{{ investigation.duration_seconds or 0 }}s</td></tr>
+              <tr><th>Scan Started</th><td class="mono">{{ investigation.started_at[:19].replace('T', ' ') }} UTC</td></tr>
+              <tr><th>Scan Completed</th><td class="mono">{{ investigation.completed_at[:19].replace('T', ' ') if investigation.completed_at else 'In Progress' }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quick Perimeter Telemetry -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Perimeter Telemetry Snapshot</h2>
+        </div>
+        <div class="recon-stat-summary" style="margin-bottom: 0;">
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Registrar</div>
+            <div class="recon-stat-val" style="font-size: 0.875rem;">{{ data.whois.registrar if data.whois and data.whois.registrar else 'N/A' }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">ASN Routing</div>
+            <div class="recon-stat-val mono" style="font-size: 0.875rem;">{{ data.ip_info.asn if data.ip_info and data.ip_info.asn else (data.ip.primary.asn if data.ip and data.ip.primary else 'N/A') }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Web Server</div>
+            <div class="recon-stat-val mono" style="font-size: 0.875rem;">{{ data.http.headers.get('server', 'Undisclosed') if data.http and data.http.headers else 'N/A' }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">SSL Validity</div>
+            <div class="recon-stat-val" style="font-size: 0.875rem;">
+              {% if data.ssl and data.ssl.days_remaining is not none %}
+                <span class="badge badge-{% if data.ssl.days_remaining < 15 %}critical{% elif data.ssl.days_remaining < 30 %}warning{% else %}success{% endif %}">{{ data.ssl.days_remaining }}d remaining</span>
+              {% else %}
+                <span class="badge badge-obs">N/A</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SECTION 2: FINDINGS
+         ====================================================================== -->
+    <div id="section-findings" class="workspace-section">
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h2 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Security Findings ({{ findings|length }})
+            </h2>
+            <p class="page-subtitle" style="margin-top: 0.15rem;">
+              Prioritized vulnerabilities, missing defensive controls, and evidence-backed observations.
+            </p>
+          </div>
+          <!-- Filter Chips -->
+          <div class="findings-filter-bar" style="margin-bottom: 0;">
+            <button class="filter-chip active" data-severity="ALL">All <span class="filter-chip-count">{{ findings|length }}</span></button>
+            <button class="filter-chip" data-severity="CRITICAL">Critical <span class="filter-chip-count">{{ findings|selectattr('severity', 'equalto', 'CRITICAL')|list|length }}</span></button>
+            <button class="filter-chip" data-severity="HIGH">High <span class="filter-chip-count">{{ findings|selectattr('severity', 'equalto', 'HIGH')|list|length }}</span></button>
+            <button class="filter-chip" data-severity="MEDIUM">Medium <span class="filter-chip-count">{{ findings|selectattr('severity', 'equalto', 'MEDIUM')|list|length }}</span></button>
+            <button class="filter-chip" data-severity="LOW">Low <span class="filter-chip-count">{{ findings|selectattr('severity', 'equalto', 'LOW')|list|length }}</span></button>
+            <button class="filter-chip" data-severity="INFO">Info <span class="filter-chip-count">{{ findings|selectattr('severity', 'in', ['INFORMATION', 'OBSERVATION'])|list|length }}</span></button>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="table" id="findingsTable">
+            <thead>
+              <tr>
+                <th style="width: 110px;">Severity</th>
+                <th>Finding Title</th>
+                <th>Affected Asset</th>
+                <th>Discovery Source</th>
+                <th style="width: 90px; text-align: center;">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in findings %}
+              <tr class="finding-row" data-severity="{% if f.severity in ['INFORMATION', 'OBSERVATION'] %}INFO{% else %}{{ f.severity }}{% endif %}">
+                <td><span class="badge badge-{{ f.severity.lower() }}">{{ f.severity }}</span></td>
+                <td>
+                  <strong>{{ f.title }}</strong>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.2rem; line-height: 1.4;">
+                    {{ f.description[:120] }}{% if f.description|length > 120 %}...{% endif %}
+                  </div>
+                </td>
+                <td><span class="mono" style="font-size: 0.8125rem;">{{ f.affected_asset }}</span></td>
+                <td style="font-size: 0.75rem; color: var(--text-muted);">{{ f.source }}</td>
+                <td style="text-align: center;">
+                  <button 
+                    class="btn btn-secondary btn-sm"
+                    data-drawer-trigger
+                    data-title="{{ f.title }}"
+                    data-meaning="{{ f.description }}"
+                    data-found="Observed on asset: {{ f.affected_asset }}."
+                    data-technical="Remediation: {{ f.recommendation }}"
+                    data-evidence="{{ f.evidence }}"
+                    data-source="{{ f.source }}"
+                    data-time="{{ f.timestamp }}"
+                    data-limitations="Verifiable reconnaissance finding; zero speculative assumptions."
+                  >
+                    Inspect
+                  </button>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+                  Zero security findings recorded. Target perimeter verified against baseline security policies.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SECTION 3: NETWORK
+         ====================================================================== -->
+    <div id="section-network" class="workspace-section">
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Network Infrastructure & IP Geolocation</h2>
+          <span class="badge badge-info">{{ data.dns.records|length if data.dns and data.dns.records else 0 }} DNS Records</span>
+        </div>
+        <div class="recon-stat-summary">
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Primary IP</div>
+            <div class="recon-stat-val mono">{{ primary_ip or 'N/A' }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Autonomous System (ASN)</div>
+            <div class="recon-stat-val mono">{{ data.ip_info.asn if data.ip_info and data.ip_info.asn else (data.ip.primary.asn if data.ip and data.ip.primary else 'N/A') }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">ISP / Organization</div>
+            <div class="recon-stat-val">{{ data.ip_info.organization or data.ip_info.isp or (data.ip.primary.isp if data.ip and data.ip.primary else 'N/A') }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Location</div>
+            <div class="recon-stat-val">{{ data.ip_info.city or 'N/A' }}{% if data.ip_info and data.ip_info.country %}, {{ data.ip_info.country }}{% endif %}</div>
+          </div>
+        </div>
+
+        {% if data.ip and data.ip.resolved_ips %}
+        <div style="padding: 1rem 1.25rem;">
+          <h3 style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary);">Resolved IP Routing Endpoints</h3>
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>IP Address</th>
+                  <th>Reverse DNS (PTR)</th>
+                  <th>ASN</th>
+                  <th>ISP</th>
+                  <th>Location</th>
+                  <th style="width: 80px; text-align: center;">Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ip_item in data.ip.resolved_ips %}
+                <tr>
+                  <td><span class="mono" style="font-weight: 600;">{{ ip_item.ip }}</span></td>
+                  <td class="mono" style="font-size: 0.75rem;">{{ ip_item.reverse_dns or 'N/A' }}</td>
+                  <td class="mono" style="font-size: 0.75rem;">{{ ip_item.asn or 'N/A' }}</td>
+                  <td style="font-size: 0.75rem;">{{ ip_item.isp or 'N/A' }}</td>
+                  <td style="font-size: 0.75rem;">{{ ip_item.city }}{% if ip_item.country %}, {{ ip_item.country }}{% endif %}</td>
+                  <td style="text-align: center;">
+                    <button class="btn btn-secondary btn-sm" data-drawer-trigger data-title="IP: {{ ip_item.ip }}" data-meaning="Public IP node" data-found="Reverse DNS: {{ ip_item.reverse_dns }}" data-technical="ASN: {{ ip_item.asn }}" data-evidence="{{ ip_item|tojson }}" data-source="BGP Routing" data-time="{{ ip_item.collected_at }}">Inspect</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Authoritative DNS Records -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Authoritative DNS Records ({{ data.dns.records|length if data.dns and data.dns.records else 0 }})</h2>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 80px;">Type</th>
+                <th>Host</th>
+                <th>Record Value</th>
+                <th>TTL</th>
+                <th style="width: 80px; text-align: center;">Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in data.dns.records %}
+              <tr>
+                <td><span class="badge badge-info">{{ r.type }}</span></td>
+                <td class="mono" style="font-size: 0.8125rem;">{{ r.name }}</td>
+                <td class="mono" style="font-size: 0.8125rem; word-break: break-all;">{{ r.value }}</td>
+                <td class="mono" style="font-size: 0.75rem;">{{ r.ttl }}s</td>
+                <td style="text-align: center;">
+                  <button class="btn btn-secondary btn-sm" data-drawer-trigger data-title="DNS {{ r.type }}" data-meaning="DNS pointer" data-found="{{ r.name }} -> {{ r.value }}" data-technical="TTL: {{ r.ttl }}s" data-evidence="{{ r|tojson }}" data-source="Authoritative DNS" data-time="{{ r.collected_at }}">Inspect</button>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No DNS records logged for this target.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SECTION 4: DOMAIN
+         ====================================================================== -->
+    <div id="section-domain" class="workspace-section">
+      <!-- WHOIS / RDAP Registration -->
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">WHOIS & RDAP Domain Registration</h2>
+          <span class="badge badge-info">ICANN RDAP</span>
+        </div>
+        <div class="recon-stat-summary">
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Registrar</div>
+            <div class="recon-stat-val" style="font-size: 0.9375rem;">{{ data.whois.registrar if data.whois and data.whois.registrar else 'N/A' }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Registration Date</div>
+            <div class="recon-stat-val mono" style="font-size: 0.875rem;">{{ data.whois.created_date[:10] if data.whois and data.whois.created_date else 'N/A' }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Expiration Date</div>
+            <div class="recon-stat-val mono" style="font-size: 0.875rem;">{{ data.whois.expiry_date[:10] if data.whois and data.whois.expiry_date else 'N/A' }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">DNSSEC</div>
+            <div class="recon-stat-val" style="font-size: 0.875rem;">
+              {% if data.whois and data.whois.dnssec %}
+                <span class="badge badge-success">DNSSEC Signed</span>
+              {% else %}
+                <span class="badge badge-obs">Unsigned</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {% if data.whois and data.whois.nameservers %}
+        <div style="padding: 1rem 1.25rem;">
+          <h3 style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0.5rem;">Delegated Nameservers</h3>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            {% for ns in data.whois.nameservers %}
+              <span class="mono" style="font-size: 0.8125rem; background: var(--bg-surface-secondary); padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">{{ ns }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Discovered Subdomains -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Discovered Subdomains ({{ data.subdomains.total_discovered if data.subdomains else 0 }})</h2>
+          <span class="badge badge-info">Certificate Transparency & Passive OSINT</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Subdomain Name</th>
+                <th>Resolved IP</th>
+                <th>HTTP Status</th>
+                <th>Discovery Source</th>
+                <th style="width: 80px; text-align: center;">Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if data.subdomains and data.subdomains.subdomains %}
+                {% for sub in data.subdomains.subdomains %}
+                <tr>
+                  <td><span class="mono" style="font-weight: 600;">{{ sub.subdomain }}</span></td>
+                  <td><span class="mono" style="font-size: 0.8125rem;">{{ sub.ip or 'Unresolved' }}</span></td>
+                  <td>
+                    {% if sub.http_status %}
+                      <span class="badge badge-{% if sub.http_status == 200 %}success{% else %}info{% endif %}">{{ sub.http_status }}</span>
+                    {% else %}
+                      <span class="badge badge-obs">N/A</span>
+                    {% endif %}
+                  </td>
+                  <td style="font-size: 0.75rem; color: var(--text-muted);">{{ sub.source }}</td>
+                  <td style="text-align: center;">
+                    <button class="btn btn-secondary btn-sm" data-drawer-trigger data-title="Subdomain: {{ sub.subdomain }}" data-meaning="Perimeter asset" data-found="IP: {{ sub.ip or 'Unresolved' }}" data-technical="Source: {{ sub.source }}" data-evidence="{{ sub|tojson }}" data-source="{{ sub.source }}" data-time="{{ sub.collected_at }}">Inspect</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No external subdomains discovered for this target.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SECTION 5: WEB
+         ====================================================================== -->
+    <div id="section-web" class="workspace-section">
+      <!-- Web Transport & Headers -->
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Web Response & HTTP Transport</h2>
+        </div>
+        <div class="recon-stat-summary">
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">HTTP Status</div>
+            <div class="recon-stat-val">
+              {% if data.http and data.http.status_code %}
+                <span class="badge badge-{% if data.http.status_code == 200 %}success{% elif data.http.status_code in (301, 302) %}info{% else %}warning{% endif %}">
+                  {{ data.http.status_code }} {{ data.http.reason or data.http.status_reason or 'OK' }}
+                </span>
+              {% else %}
+                <span class="badge badge-obs">N/A</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Web Server</div>
+            <div class="recon-stat-val mono" style="font-size: 0.875rem;">{{ data.http.headers.get('server', 'Undisclosed') if data.http and data.http.headers else 'N/A' }}</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Technology Stack</div>
+            <div class="recon-stat-val">{{ data.technologies|length if data.technologies else 0 }} Detected</div>
+          </div>
+          <div class="recon-stat-item">
+            <div class="recon-stat-label">Discovered Endpoints</div>
+            <div class="recon-stat-val mono">{{ data.endpoints.total_endpoints if data.endpoints else 0 }}</div>
+          </div>
+        </div>
+
+        <!-- Security Headers Evaluation -->
+        {% if data.security_headers and data.security_headers.headers %}
+        <div style="padding: 1rem 1.25rem;">
+          <h3 style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary);">Defensive Security Headers Evaluation</h3>
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Security Header</th>
+                  <th>Status</th>
+                  <th>Evaluation Rationale</th>
+                  <th style="width: 80px; text-align: center;">Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if data.security_headers.headers is mapping %}
+                  {% for h_name, h_info in data.security_headers.headers.items() %}
+                  <tr>
+                    <td><span class="mono" style="font-weight: 600;">{{ h_name }}</span></td>
+                    <td>
+                      {% if h_info.status in ['PASS', 'STRONG'] %}
+                        <span class="badge badge-success">{{ h_info.status }}</span>
+                      {% elif h_info.status in ['WEAK', 'SUBOPTIMAL'] %}
+                        <span class="badge badge-medium">{{ h_info.status }}</span>
+                      {% else %}
+                        <span class="badge badge-high">{{ h_info.status or 'MISSING' }}</span>
+                      {% endif %}
+                    </td>
+                    <td style="font-size: 0.8125rem; color: var(--text-secondary);">{{ h_info.reason or h_info.significance or h_info.purpose }}</td>
+                    <td style="text-align: center;">
+                      <button class="btn btn-secondary btn-sm" data-drawer-trigger data-title="{{ h_name }}" data-meaning="{{ h_info.purpose }}" data-found="{{ h_info.reason or h_info.significance }}" data-technical="{{ h_info.value or h_info.raw_value or 'Absent' }}" data-evidence="{{ h_info|tojson }}" data-source="HTTP Response">Inspect</button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  {% for h_info in data.security_headers.headers %}
+                  <tr>
+                    <td><span class="mono" style="font-weight: 600;">{{ h_info.header }}</span></td>
+                    <td>
+                      {% if h_info.status in ['PASS', 'STRONG'] %}
+                        <span class="badge badge-success">{{ h_info.status }}</span>
+                      {% elif h_info.status in ['WEAK', 'SUBOPTIMAL'] %}
+                        <span class="badge badge-medium">{{ h_info.status }}</span>
+                      {% else %}
+                        <span class="badge badge-high">{{ h_info.status or 'MISSING' }}</span>
+                      {% endif %}
+                    </td>
+                    <td style="font-size: 0.8125rem; color: var(--text-secondary);">{{ h_info.reason or h_info.significance or h_info.purpose }}</td>
+                    <td style="text-align: center;">
+                      <button class="btn btn-secondary btn-sm" data-drawer-trigger data-title="{{ h_info.header }}" data-meaning="{{ h_info.purpose }}" data-found="{{ h_info.significance or h_info.reason }}" data-technical="{{ h_info.value or h_info.raw_value or 'Absent' }}" data-evidence="{{ h_info|tojson }}" data-source="HTTP Response">Inspect</button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Technologies Table -->
+      {% if data.technologies %}
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Identified Technologies ({{ data.technologies|length }})</h2>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Technology</th>
+                <th>Category</th>
+                <th>Confidence</th>
+                <th>Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in data.technologies %}
+              <tr>
+                <td><strong>{{ t.name }}</strong></td>
+                <td><span class="badge badge-obs">{{ t.category }}</span></td>
+                <td><span class="badge badge-info">{{ t.confidence }}</span></td>
+                <td class="mono" style="font-size: 0.8125rem;">{{ t.evidence }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Discovered Endpoints -->
+      {% if data.endpoints and data.endpoints.endpoints %}
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Discovered Web Endpoints ({{ data.endpoints.total_endpoints }})</h2>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Endpoint Path</th>
+                <th>Method</th>
+                <th>HTTP Status</th>
+                <th>Response Size</th>
+                <th>Content-Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ep in data.endpoints.endpoints %}
+              <tr>
+                <td><span class="mono" style="font-weight: 600;">{{ ep.endpoint }}</span></td>
+                <td><span class="mono" style="font-size: 0.75rem;">{{ ep.method }}</span></td>
+                <td>
+                  <span class="badge badge-{% if ep.status_code == 200 %}success{% elif ep.status_code in (301, 302) %}info{% else %}obs{% endif %}">
+                    {{ ep.status_code }}
+                  </span>
+                </td>
+                <td class="mono" style="font-size: 0.75rem;">{{ ep.response_size }} B</td>
+                <td style="font-size: 0.75rem; color: var(--text-secondary);">{{ ep.content_type }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ======================================================================
+         SECTION 6: SERVICES
+         ====================================================================== -->
+    <div id="section-services" class="workspace-section">
+      <!-- Open TCP Ports -->
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Open TCP Ports & Services ({{ data.ports.open_ports_count if data.ports else 0 }})</h2>
+          <span class="badge badge-info">Safe TCP Handshake</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 90px;">Port</th>
+                <th>Service</th>
+                <th>State</th>
+                <th>Service Banner</th>
+                <th style="width: 80px; text-align: center;">Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if data.ports and data.ports.open_ports %}
+                {% for p in data.ports.open_ports %}
+                <tr>
+                  <td><span class="mono" style="font-weight: 700; color: var(--accent-primary);">{{ p.port }}</span></td>
+                  <td><strong>{{ p.service }}</strong></td>
+                  <td><span class="badge badge-success">{{ p.state }}</span></td>
+                  <td class="mono" style="font-size: 0.75rem;">{{ p.banner or 'No banner returned' }}</td>
+                  <td style="text-align: center;">
+                    <button class="btn btn-secondary btn-sm" data-drawer-trigger data-title="Port {{ p.port }} ({{ p.service }})" data-meaning="Exposed TCP port" data-found="Port {{ p.port }} is {{ p.state }}" data-technical="Banner: {{ p.banner or 'N/A' }}" data-evidence="{{ p|tojson }}" data-source="Safe TCP Connect" data-time="{{ p.collected_at }}">Inspect</button>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Zero open ports discovered within standard bounded probe list.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SSL / TLS Cryptographic Inspection -->
+      {% if data.ssl and data.ssl.subject %}
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">SSL / TLS Cryptographic Inspection</h2>
+          <span class="badge badge-info">{{ data.ssl.tls_version or 'TLS' }}</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="table">
+            <tbody>
+              <tr>
+                <td style="width: 220px; font-weight: 600;">Subject Common Name (CN)</td>
+                <td class="mono">{{ data.ssl.subject.common_name or 'N/A' }}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">Issuer Organization</td>
+                <td>{{ data.ssl.issuer.organization or data.ssl.issuer.common_name or 'N/A' }}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">Validity Period</td>
+                <td class="mono" style="font-size: 0.8125rem;">
+                  {{ data.ssl.valid_from }} &rarr; {{ data.ssl.valid_to }} 
+                  <span class="badge badge-{% if data.ssl.days_remaining and data.ssl.days_remaining < 15 %}critical{% elif data.ssl.days_remaining and data.ssl.days_remaining < 30 %}warning{% else %}success{% endif %}" style="margin-left: 0.5rem;">
+                    {{ data.ssl.days_remaining }} days remaining
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">Subject Alternative Names (SAN)</td>
+                <td class="mono" style="font-size: 0.75rem; word-break: break-all;">
+                  {{ data.ssl.subject_alt_names|join(', ') if data.ssl.subject_alt_names else 'None' }}
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">Negotiated TLS Protocol</td>
+                <td><span class="badge badge-info">{{ data.ssl.tls_version }}</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight: 600;">Cipher Suite</td>
+                <td class="mono" style="font-size: 0.75rem;">{{ data.ssl.cipher.name if data.ssl.cipher else 'N/A' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ======================================================================
+         SECTION 7: ATTACK SURFACE
+         ====================================================================== -->
+    <div id="section-attack-surface" class="workspace-section">
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h2 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              Attack Surface Topology Map
+            </h2>
+            <p class="page-subtitle" style="margin-top: 0.15rem;">
+              Real-time force-directed visualization of asset relationships and discovered perimeters.
+            </p>
+          </div>
+          <a href="{{ url_for('web.attack_surface', investigation_id=investigation.id) }}" class="btn btn-primary btn-sm">
+            Open Full Screen Map &rarr;
+          </a>
+        </div>
+
+        <div style="padding: 1.25rem;">
+          <!-- Quick counts -->
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            <span class="mono" style="background: var(--bg-surface-secondary); padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8125rem;">
+              <strong>{{ data.attack_surface.node_count if data.attack_surface else 0 }}</strong> Nodes
+            </span>
+            <span class="mono" style="background: var(--bg-surface-secondary); padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8125rem;">
+              <strong>{{ data.attack_surface.edge_count if data.attack_surface else 0 }}</strong> Relationships
+            </span>
+            <span class="mono" style="background: var(--bg-surface-secondary); padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8125rem;">
+              <strong>{{ data.subdomains.total_discovered if data.subdomains else 0 }}</strong> Subdomains
+            </span>
+            <span class="mono" style="background: var(--bg-surface-secondary); padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-size: 0.8125rem;">
+              <strong>{{ data.ports.open_ports_count if data.ports else 0 }}</strong> Ports
+            </span>
+          </div>
+
+          <!-- Canvas Container -->
+          <div style="position: relative; width: 100%; height: 480px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-color); background: var(--bg-surface-secondary);">
+            <canvas id="surfaceCanvas" style="width: 100%; height: 100%; display: block;"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SECTION 8: TIMELINE
+         ====================================================================== -->
+    <div id="section-timeline" class="workspace-section">
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h2 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+              Execution Audit Timeline ({{ timeline|length }})
+            </h2>
+            <p class="page-subtitle" style="margin-top: 0.15rem;">
+              Factual chronological log of reconnaissance operations, execution durations, and module results.
+            </p>
+          </div>
+          <a href="{{ url_for('web.timeline', investigation_id=investigation.id) }}" class="btn btn-outline btn-sm">
+            Dedicated Timeline View
+          </a>
+        </div>
+        <div id="liveTimelineEvents" style="max-height: 520px; overflow-y: auto;">
+          {% for ev in timeline %}
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--border-color); font-size: 0.8125rem;">
+            <div>
+              <div style="font-weight: 600; color: var(--text-primary);">{{ ev.operation }}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">{{ ev.message }}</div>
+            </div>
+            <div style="text-align: right; white-space: nowrap; margin-left: 1rem;">
+              <span class="badge badge-{{ ev.status.lower() }}">{{ ev.status }}</span>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">{{ ev.duration_ms }}ms</div>
+            </div>
+          </div>
+          {% else %}
+          <div style="padding: 2.5rem; text-align: center; color: var(--text-muted); font-size: 0.875rem;">
+            No timeline operations logged yet.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/attack_surface.js') }}"></script>
+<script src="{{ url_for('static', filename='js/workspace.js') }}"></script>
+<script>
+  window.WORKSPACE_GRAPH_DATA = {{ investigation.data.attack_surface|tojson if (investigation.data and investigation.data.attack_surface) else '{}' }};
+  document.addEventListener('DOMContentLoaded', () => {
+    window.workspaceManagerInstance = new WorkspaceManager("{{ investigation.id }}", "{{ investigation.status }}");
+  });
+</script>
+{% endblock %}

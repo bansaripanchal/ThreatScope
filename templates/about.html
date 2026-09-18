@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}About &bull; ThreatScope{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div class="page-header" style="margin-bottom: 2rem;">
+    <div>
+      <h1 class="page-title">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        About ThreatScope
+      </h1>
+      <p class="page-subtitle">Ethical Hacking Reconnaissance &bull; VAPT &bull; Attack-Surface Intelligence</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <h2 class="card-title">1. Purpose & Core Identity</h2>
+    </div>
+    <div class="card-body" style="font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.7;">
+      <p style="margin-bottom: 1rem;">
+        <strong>ThreatScope</strong> is an enterprise-grade ethical hacking reconnaissance and attack surface intelligence platform. It provides authorized security auditors, penetration testers, and Red Teams with continuous, automated asset discovery, surface relationship mapping, cryptographic verification, and authoritative 23-section reporting.
+      </p>
+      <div style="padding: 1rem; background-color: var(--bg-surface-secondary); border-radius: var(--radius-md); border-left: 3px solid var(--accent-primary);">
+        <strong>What ThreatScope IS:</strong>
+        <ul style="padding-left: 1.25rem; margin-top: 0.35rem;">
+          <li>External Attack Surface Management (EASM)</li>
+          <li>Vulnerability Assessment & Penetration Testing (VAPT) Reconnaissance</li>
+          <li>Authoritative Open-Source Intelligence (OSINT) Aggregation</li>
+          <li>Topological Asset Graph Mapping & Historical Delta Comparison</li>
+        </ul>
+      </div>
+      <div style="padding: 1rem; background-color: var(--bg-surface-secondary); border-radius: var(--radius-md); border-left: 3px solid var(--color-danger); margin-top: 0.75rem;">
+        <strong>What ThreatScope IS NOT:</strong>
+        <ul style="padding-left: 1.25rem; margin-top: 0.35rem;">
+          <li>NOT a SOC / SIEM platform</li>
+          <li>NOT an EDR / Endpoint agent or File integrity monitor</li>
+          <li>NOT a Ransomware / Antivirus scanner</li>
+          <li>NOT an automated exploitation or payload delivery framework</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <h2 class="card-title">2. Architectural Pipeline</h2>
+    </div>
+    <div class="card-body" style="font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.7;">
+      <div class="workflow-pipeline" style="margin-bottom: 1rem;">
+        <div class="pipe-step active">Target</div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step active">Recon</div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step active">Enumeration</div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step active">Attack Surface</div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step active">Evidence</div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step active">Findings</div>
+        <div class="pipe-arrow">&rarr;</div>
+        <div class="pipe-step active">Report</div>
+      </div>
+      <p>
+        Every investigation executes asynchronously in background thread pools, preserving UI responsiveness while streaming chronological audit events into persistent SQLite storage.
+      </p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+      <h2 class="card-title">3. Real Data Policy & Verifiable Telemetry</h2>
+    </div>
+    <div class="card-body" style="font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.7;">
+      <p style="margin-bottom: 0.75rem;">
+        ThreatScope operates under a strict <strong>Zero Fake Data</strong> policy:
+      </p>
+      <ul style="padding-left: 1.25rem; margin-bottom: 0.75rem;">
+        <li>Zero synthetic IP addresses, open ports, or certificates.</li>
+        <li>Zero arbitrary numeric security scores (e.g. "Security Grade: 84/100").</li>
+        <li>Every finding is backed by reproducible technical evidence (headers, raw DNS responses, TLS socket handshakes).</li>
+        <li>When external sources are unreachable, ThreatScope explicitly reports <span class="badge badge-obs">TIMEOUT</span>, <span class="badge badge-obs">NO_DATA</span>, or <span class="badge badge-obs">UNAVAILABLE</span> with factual error context.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">4. SSRF Guard Rails & Ethical Boundaries</h2>
+    </div>
+    <div class="card-body" style="font-size: 0.9375rem; color: var(--text-secondary); line-height: 1.7;">
+      <p>
+        All target inputs undergo normalization and validation against private RFC 1918 CIDR blocks, loopback interfaces (127.0.0.0/8, ::1), and cloud instance metadata services (169.254.169.254). Internal scanning is blocked unless explicitly authorized by the operator.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

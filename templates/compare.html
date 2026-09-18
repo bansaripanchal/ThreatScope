@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Recon Comparison &bull; ThreatScope{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Reconnaissance Comparison & Differential Analysis
+    </h1>
+    <p class="page-subtitle">Track infrastructure changes, newly exposed ports, subdomains, certificate renewals, and emerging vulnerabilities.</p>
+  </div>
+</div>
+
+<!-- Comparison Selector Card -->
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-header">
+    <h2 class="card-title">Select Scan Baselines</h2>
+  </div>
+  <div class="card-body">
+    <div class="grid grid-2" style="gap: 1.5rem; align-items: flex-end;">
+      <div>
+        <label class="form-label" for="compareSelectA">Investigation A (Baseline)</label>
+        <select id="compareSelectA" class="form-select">
+          <option value="">-- Choose Baseline Investigation --</option>
+          {% for inv in all_investigations %}
+          <option value="{{ inv.id }}" {% if inv_a_id == inv.id %}selected{% endif %}>
+            {{ inv.target }} &bull; {{ inv.started_at[:10] }} ({{ inv.id }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label" for="compareSelectB">Investigation B (Target / Current)</label>
+        <select id="compareSelectB" class="form-select">
+          <option value="">-- Choose Comparison Investigation --</option>
+          {% for inv in all_investigations %}
+          <option value="{{ inv.id }}" {% if inv_b_id == inv.id %}selected{% endif %}>
+            {{ inv.target }} &bull; {{ inv.started_at[:10] }} ({{ inv.id }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end;">
+      <button id="btnRunCompare" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Execute Differential Analysis
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Diff Results -->
+{% if diff %}
+<!-- Summary Metric Pills -->
+<div class="grid grid-4" style="margin-bottom: 2rem;">
+  <div class="card metric-card">
+    <span class="metric-label">Added Assets / Findings</span>
+    <div class="metric-value" style="color: var(--color-success);">+{{ diff.summary.added }}</div>
+    <div class="metric-meta">Newly identified in Investigation B</div>
+  </div>
+
+  <div class="card metric-card">
+    <span class="metric-label">Removed Assets</span>
+    <div class="metric-value" style="color: var(--color-danger);">-{{ diff.summary.removed }}</div>
+    <div class="metric-meta">Present in A, absent in B</div>
+  </div>
+
+  <div class="card metric-card">
+    <span class="metric-label">Changed Attributes</span>
+    <div class="metric-value" style="color: var(--color-warning);">{{ diff.summary.changed }}</div>
+    <div class="metric-meta">Updated ports, TLS, or routing</div>
+  </div>
+
+  <div class="card metric-card">
+    <span class="metric-label">Unchanged Attributes</span>
+    <div class="metric-value" style="color: var(--text-muted);">{{ diff.summary.unchanged }}</div>
+    <div class="metric-meta">Consistent across both audits</div>
+  </div>
+</div>
+
+<!-- Category Tables -->
+{% for cat_name, items in diff.categories.items() %}
+{% if items %}
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <h3 class="card-title" style="text-transform: capitalize;">
+      {{ cat_name.replace('_', ' ') }} Differential
+    </h3>
+    <span class="badge badge-info">{{ items|length }} Items</span>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Asset / Property</th>
+          <th>Delta Status</th>
+          <th>Investigation A (Baseline)</th>
+          <th>Investigation B (Current)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td><strong>{{ it.item }}</strong></td>
+          <td>
+            <span class="badge badge-{{ it.state.lower() }}">{{ it.state }}</span>
+          </td>
+          <td class="mono" style="font-size: 0.8125rem; color: var(--text-secondary);">{{ it.val_a }}</td>
+          <td class="mono" style="font-size: 0.8125rem; color: var(--text-primary);">{{ it.val_b }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% elif inv_a_id and inv_b_id %}
+<div class="alert alert-warning">No comparative differences recorded between the selected investigations.</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/compare.js') }}"></script>
+{% endblock %}

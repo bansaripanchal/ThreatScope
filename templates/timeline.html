@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Recon Timeline &bull; ThreatScope{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+      Reconnaissance Audit Timeline
+    </h1>
+    <p class="page-subtitle">Chronological step-by-step execution telemetry and module durations.</p>
+  </div>
+
+  {% if all_investigations %}
+  <div style="display: flex; align-items: center; gap: 0.5rem;">
+    <label for="invSelect" style="font-size: 0.8125rem; color: var(--text-secondary); font-weight: 600;">Target:</label>
+    <select id="invSelect" class="form-select" style="width: auto; padding: 0.4rem 0.75rem; font-size: 0.8125rem;" onchange="window.location.href='/timeline/' + this.value">
+      {% for inv in all_investigations %}
+      <option value="{{ inv.id }}" {% if investigation and inv.id == investigation.id %}selected{% endif %}>
+        {{ inv.target }} ({{ inv.started_at[:10] }})
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+</div>
+
+{% if investigation %}
+<div class="card" style="margin-bottom: 1.5rem;">
+  <div class="card-header">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <h2 class="card-title">{{ investigation.target }}</h2>
+      <span class="badge badge-{{ investigation.status.lower() }}">{{ investigation.status }}</span>
+    </div>
+    <div style="font-size: 0.8125rem; color: var(--text-muted);">
+      Total Pipeline Duration: <strong>{{ investigation.duration_seconds or 0 }}s</strong>
+    </div>
+  </div>
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Time (UTC)</th>
+          <th>Operation</th>
+          <th>Status</th>
+          <th>Duration</th>
+          <th>Audit Telemetry & Message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ev in timeline %}
+        <tr>
+          <td class="mono" style="font-size: 0.75rem; white-space: nowrap;">{{ ev.timestamp[:19].replace('T', ' ') }}</td>
+          <td><strong>{{ ev.operation }}</strong></td>
+          <td><span class="badge badge-{{ ev.status.lower() }}">{{ ev.status }}</span></td>
+          <td class="mono" style="font-size: 0.75rem;">{{ ev.duration_ms }}ms</td>
+          <td style="font-size: 0.8125rem; color: var(--text-secondary);">{{ ev.message }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No timeline events recorded.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+  No investigations recorded. Start an investigation to observe real-time timeline telemetry.
+</div>
+{% endif %}
+{% endblock %}
