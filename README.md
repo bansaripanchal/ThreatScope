@@ -13,13 +13,6 @@ ThreatScope is designed for:
 - **Vulnerability Assessment & Penetration Testing (VAPT) Perimeter Auditing**
 - **Authoritative Open-Source Intelligence (OSINT) Aggregation**
 
-### What ThreatScope IS NOT:
-- **NOT** a SOC (Security Operations Center)
-- **NOT** a SIEM (Security Information and Event Management)
-- **NOT** an EDR (Endpoint Detection and Response)
-- **NOT** a Ransomware or Antivirus agent
-- **NOT** an Endpoint file or process monitor
-- **NOT** an automated exploitation or payload delivery tool
 
 ---
 
